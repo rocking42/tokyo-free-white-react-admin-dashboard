@@ -1,0 +1,7 @@
+enabled: true
+dependencyUpdates:
+  schedule: "monthly"  # weekly, monthly
+  grouping: "all"  # all, major, minor, patch
+  maxUpdatesPerPR: 20
+  includeDevDependencies: true
+notificationEmail: "test@automend.com"
