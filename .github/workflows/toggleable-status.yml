@@ -1,0 +1,59 @@
+name: Toggleable Status Check
+
+on:
+  pull_request:
+    branches:
+      - '*'
+  # Allow manual triggering with parameters
+  workflow_dispatch:
+    inputs:
+      should_pass:
+        description: 'Set to "true" to make this check pass, any other value to fail'
+        required: true
+        default: 'false'
+        type: string
+
+jobs:
+  status-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Check for control file
+        id: check_file
+        run: |
+          if [ -f ".github/STATUS_CONTROL" ]; then
+            echo "control_exists=true" >> $GITHUB_OUTPUT
+            echo "control_content=$(cat .github/STATUS_CONTROL)" >> $GITHUB_OUTPUT
+          else
+            echo "control_exists=false" >> $GITHUB_OUTPUT
+            echo "control_content=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine if check should pass
+        id: determine_status
+        run: |
+          SHOULD_PASS="${{ github.event.inputs.should_pass }}"
+          
+          # If triggered manually, use the input parameter
+          if [ "$SHOULD_PASS" = "true" ]; then
+            echo "should_pass=true" >> $GITHUB_OUTPUT
+          elif [ "$SHOULD_PASS" != "" ]; then
+            echo "should_pass=false" >> $GITHUB_OUTPUT
+          # Otherwise use the control file
+          elif [ "${{ steps.check_file.outputs.control_exists }}" = "true" ] && [ "${{ steps.check_file.outputs.control_content }}" = "pass" ]; then
+            echo "should_pass=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_pass=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run status check
+        run: |
+          if [ "${{ steps.determine_status.outputs.should_pass }}" = "true" ]; then
+            echo "Status check is configured to pass"
+            exit 0
+          else
+            echo "Status check is configured to fail"
+            exit 1
+          fi
